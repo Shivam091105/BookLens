@@ -159,7 +159,7 @@ function BookMini({ book, navigate }) {
   return (
     <div
       className={styles.bookMini}
-      onClick={() => navigate(`/log`)}
+      onClick={() => navigate(`/book/${book.externalId}`)}
       title={book.title}
     >
       {book.coverUrl ? (

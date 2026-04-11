@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import StarRating from '../ui/StarRating'
 import styles from './BookCard.module.css'
 
@@ -15,7 +16,10 @@ import styles from './BookCard.module.css'
  * }
  */
 export default function BookCard({ book, badge }) {
+  const navigate = useNavigate()
+
   const {
+    externalId,
     title         = '',
     author        = '',
     coverUrl,
@@ -31,8 +35,14 @@ export default function BookCard({ book, badge }) {
     : String(ratingsCount)
   const displayCover = coverUrlSmall || coverUrl
 
+  function handleClick() {
+    if (externalId) {
+      navigate(`/book/${externalId}`)
+    }
+  }
+
   return (
-    <div className={styles.card}>
+    <div className={styles.card} onClick={handleClick} style={externalId ? { cursor: 'pointer' } : {}}>
       <div className={`${styles.cover} ${!displayCover ? coverColor : ''}`}>
         {displayCover ? (
           <img

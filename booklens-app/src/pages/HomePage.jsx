@@ -77,13 +77,13 @@ export default function HomePage() {
             </div>
           </div>
           <div className={styles.heroVisual}>
-            <div className={`${styles.spine} ${styles.bs6}`}>ORWELL</div>
-            <div className={`${styles.spine} ${styles.bs4}`}>AUSTEN</div>
-            <div className={`${styles.spine} ${styles.bs2}`}>DOSTOEVSKY</div>
-            <div className={`${styles.spine} ${styles.bs1}`}>KAFKA</div>
+            <div className={`${styles.spine} ${styles.bs6}`}>प्रेमचंद</div>
+            <div className={`${styles.spine} ${styles.bs4}`}>DOSTOEVSKY</div>
+            <div className={`${styles.spine} ${styles.bs2}`}>KAFKA</div>
             <div className={`${styles.spine} ${styles.bs3}`}>TOLSTOY</div>
-            <div className={`${styles.spine} ${styles.bs5}`}>PREMCHAND</div>
-            <div className={`${styles.spine} ${styles.bs7}`}>WOOLF</div>
+            <div className={`${styles.spine} ${styles.bs7}`}>ORWELL</div>
+            <div className={`${styles.spine} ${styles.bs1}`}>AUSTEN</div>
+            <div className={`${styles.spine} ${styles.bs5}`}>価ア鋭</div>
           </div>
         </div>
       </section>

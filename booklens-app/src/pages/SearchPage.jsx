@@ -102,7 +102,7 @@ export default function SearchPage() {
 
 function SearchResultCard({ book, navigate }) {
   return (
-    <div className={styles.resultCard} onClick={() => navigate('/log')}>
+    <div className={styles.resultCard} onClick={() => navigate(`/book/${book.externalId}`)}>
       <div className={styles.resultCoverWrap}>
         {book.coverUrl ? (
           <img
