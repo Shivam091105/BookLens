@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { booksApi } from '../api/books'
 import { logsApi } from '../api/logs'
 import { reviewsApi } from '../api/reviews'
@@ -12,123 +11,87 @@ import { StatusPill } from '../components/ui/Badge'
 import Toast from '../components/ui/Toast'
 import styles from './BookDetailPage.module.css'
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   BookDetailPage — rebuilt with maximum defensive coding.
-   
-   All data accesses are guarded. Every array access checks length first.
-   No assumptions about API field presence. Crashes are caught at component level.
-─────────────────────────────────────────────────────────────────────────────── */
-
 const STATUS_TABS = ['Read', 'Currently Reading', 'Want to Read']
 const STATUS_MAP = { 'Read': 'READ', 'Currently Reading': 'READING', 'Want to Read': 'WANT' }
 
-/* Safe helpers — never throw */
-function safe(v, fallback = '') {
-  if (v === null || v === undefined) return fallback
-  return v
-}
-function safeStr(v) { return typeof v === 'string' ? v : '' }
-function safeNum(v, fallback = 0) {
-  const n = Number(v)
-  return isFinite(n) ? n : fallback
-}
+/* ── Safe helpers ──────────────────────────────────────────────────────────── */
+function safeStr(v) { return (v != null && typeof v === 'string') ? v : '' }
+function safeNum(v, fb = 0) { const n = Number(v); return isFinite(n) ? n : fb }
 function safeArr(v) { return Array.isArray(v) ? v : [] }
-function safeRepeat(char, n) {
-  const count = Math.max(0, Math.min(10, Math.round(safeNum(n))))
-  return char.repeat(count)
-}
+function safeRpt(c, n) { const k = Math.max(0, Math.min(10, Math.round(safeNum(n)))); return c.repeat(k) }
+function colorIdx(s) { if (!s) return 1; let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return (h % 8) + 1 }
+function cleanAuthor(v) { const s = (v || '').trim(); return (!s || s === 'Unknown Author' || s === 'See Open Library') ? null : s }
+function fmtDate(iso) { try { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) } catch { return '' } }
 
-function colorIndex(str) {
-  if (!str) return 1
-  let h = 0
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0
-  return (h % 8) + 1
-}
-
-function cleanAuthor(v) {
-  if (!v) return null
-  const s = String(v).trim()
-  if (!s || s === 'Unknown Author' || s === 'See Open Library') return null
-  return s
-}
-
-function buildRatingBars(rawDist) {
+function buildRatingBars(raw) {
   const bars = [5, 4, 3, 2, 1].map(stars => ({ stars, count: 0, percent: 0 }))
-  if (!Array.isArray(rawDist) || rawDist.length === 0) return bars
+  if (!Array.isArray(raw) || raw.length === 0) return bars
   try {
-    rawDist.forEach(item => {
+    raw.forEach(item => {
       if (!item || typeof item !== 'object') return
-      // API returns { stars: 5.0, count: 3, percentage: 60.0 }
-      const starVal = safeNum(item.stars)
-      const cnt = safeNum(item.count)
-      if (starVal <= 0 || cnt <= 0) return
-      const rounded = Math.round(starVal)  // 1-5
-      const idx = 5 - rounded          // 0=5★, 4=1★
+      const sv = safeNum(item.stars), cnt = safeNum(item.count)
+      if (sv <= 0 || cnt <= 0) return
+      const idx = 5 - Math.round(sv)
       if (idx >= 0 && idx < 5) bars[idx].count += cnt
     })
-  } catch (_) { /* never crash */ }
+  } catch (_) { }
   const max = Math.max(...bars.map(b => b.count), 1)
   bars.forEach(b => { b.percent = Math.round((b.count / max) * 100) })
   return bars
 }
 
-function formatDate(iso) {
-  if (!iso) return ''
-  try {
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  } catch (_) { return '' }
-}
-
-/* ─── Main component ──────────────────────────────────────────────────────── */
+/* ── Component ─────────────────────────────────────────────────────────────── */
 export default function BookDetailPage() {
   const { externalId } = useParams()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, user } = useAuthStore()
   const queryClient = useQueryClient()
 
-  /* Fetch data — raw queries, NOT via hooks that might share state */
-  const bookQuery = useQuery({
+  /* Queries */
+  const bookQ = useQuery({
     queryKey: keys.books.detail(externalId),
     queryFn: () => booksApi.getById(externalId),
     enabled: !!externalId,
-    staleTime: 0,   // always refetch — user may have just logged/rated this book
+    staleTime: 0,
     retry: 1,
   })
-
-  const ratingQuery = useQuery({
+  const ratingQ = useQuery({
     queryKey: keys.books.ratingDist(externalId),
     queryFn: () => booksApi.getRatingDistribution(externalId),
     enabled: !!externalId,
-    staleTime: 5 * 60 * 1000,
-  })
-
-  const reviewsQuery = useQuery({
-    queryKey: keys.reviews.byBook(externalId),
-    queryFn: () => reviewsApi.getByBook(externalId, 0, 6),
-    enabled: !!externalId,
     staleTime: 2 * 60 * 1000,
   })
+  const reviewsQ = useQuery({
+    queryKey: keys.reviews.byBook(externalId),
+    queryFn: () => reviewsApi.getByBook(externalId, 0, 20),
+    enabled: !!externalId,
+    staleTime: 0,
+  })
 
-  /* Log mutation — inline, not via shared hook */
-  const [logPending, setLogPending] = useState(false)
-  const [logError, setLogError] = useState('')
-
-  /* UI state */
-  const [showLogPanel, setShowLogPanel] = useState(false)
+  /* Log panel */
+  const [showLog, setShowLog] = useState(false)
   const [logStatus, setLogStatus] = useState('Read')
   const [logRating, setLogRating] = useState(4)
-  const [logReview, setLogReview] = useState('')
   const [startedAt, setStartedAt] = useState('')
   const [finishedAt, setFinishedAt] = useState('')
   const [reread, setReread] = useState(false)
-  const [toast, setToast] = useState(false)
+  const [logPending, setLogPending] = useState(false)
+  const [logError, setLogError] = useState('')
+
+  /* Review panel */
+  const [showWriteReview, setShowWriteReview] = useState(false)
+  const [editingReview, setEditingReview] = useState(null)   // { id, content, hasSpoiler }
+  const [reviewContent, setReviewContent] = useState('')
+  const [hasSpoiler, setHasSpoiler] = useState(false)
+  const [reviewPending, setReviewPending] = useState(false)
+  const [reviewError, setReviewError] = useState('')
+
   const [imgFailed, setImgFailed] = useState(false)
+  const [toast, setToast] = useState('')
 
-  /* Loading */
-  if (bookQuery.isLoading) return <BookDetailSkeleton />
-
-  /* Error */
-  if (bookQuery.isError || !bookQuery.data) {
+  /* Loading / error */
+  if (bookQ.isLoading) return <BookDetailSkeleton />
+  if (bookQ.isError || !bookQ.data) {
     return (
       <div className={styles.wrap}>
         <div className={styles.errorState}>
@@ -140,26 +103,18 @@ export default function BookDetailPage() {
     )
   }
 
-  /* Safe data extraction — every field guarded */
-  const book = bookQuery.data
-  const ratingDist = safeArr(ratingQuery.data)
-  const rawReviews = ratingQuery.isError ? [] : safeArr(
-    Array.isArray(reviewsQuery.data) ? reviewsQuery.data : reviewsQuery.data?.content
-  )
-
+  /* Safe data extraction */
+  const book = bookQ.data
   const title = safeStr(book.title) || 'Untitled'
   const description = safeStr(book.description)
   const coverUrl = safeStr(book.coverUrl)
   const showCover = !!coverUrl && !imgFailed
-  const ci = colorIndex(safeStr(externalId))
-
+  const ci = colorIdx(safeStr(externalId))
   const rawAuthors = safeArr(book.authors).length > 0 ? safeArr(book.authors) : [book.author]
   const authors = rawAuthors.map(cleanAuthor).filter(Boolean)
   const primaryAuthor = authors[0] ?? null
-
   const avgRating = safeNum(book.averageRating)
   const ratingsCount = safeNum(book.ratingsCount)
-  const reviewsCount = safeNum(book.reviewsCount)
   const logsCount = safeNum(book.logsCount)
   const publishYear = book.publishYear ? String(book.publishYear) : null
   const pageCount = book.pageCount ? String(book.pageCount) : null
@@ -168,69 +123,116 @@ export default function BookDetailPage() {
   const isbn13 = safeStr(book.isbn13)
   const isbn = safeStr(book.isbn)
   const genres = safeArr(book.genres).filter(g => typeof g === 'string' && g.length > 0)
-
-  const userStatus = safeStr(book.userStatus)  // "READ" | "READING" | "WANT" | ""
-  const userRating = safeNum(book.userRating)   // 0.5-5.0 or 0
-
-  const ratingBars = buildRatingBars(ratingDist)
+  const userStatus = safeStr(book.userStatus)
+  const userRating = safeNum(book.userRating)
+  const ratingBars = buildRatingBars(safeArr(ratingQ.data))
   const hasRatingBars = ratingBars.some(b => b.count > 0)
 
-  /* Log handlers */
-  async function submitLog(payload) {
-    if (!isAuthenticated) { navigate('/login'); return }
-    setLogPending(true)
-    setLogError('')
-    try {
-      await logsApi.logBook(externalId, payload)
-      // Invalidate without triggering immediate refetch — avoids re-render crash
-      // Refetch book detail immediately so userStatus/userRating update in-place on the page
-      queryClient.invalidateQueries({ queryKey: keys.books.detail(externalId) })
-      queryClient.invalidateQueries({ queryKey: keys.logs.diary() })
-      queryClient.invalidateQueries({ queryKey: keys.logs.feed })
-      queryClient.invalidateQueries({ queryKey: keys.recommendations, refetchType: 'all' })
-      setShowLogPanel(false)
-      setToast(true)
-    } catch (err) {
-      setLogError(err?.response?.data?.message || 'Failed to save. Try again.')
-    } finally {
-      setLogPending(false)
-    }
+  /* Reviews */
+  const rawReviews = safeArr(
+    Array.isArray(reviewsQ.data) ? reviewsQ.data : reviewsQ.data?.content
+  )
+  const reviewsCount = rawReviews.length
+  const myReview = rawReviews.find(r => r.userId === user?.id || r.username === user?.username)
+  const otherReviews = rawReviews.filter(r => r !== myReview)
+
+  /* ── Invalidate helpers ── */
+  function invalidateAll() {
+    queryClient.invalidateQueries({ queryKey: keys.books.detail(externalId) })
+    queryClient.invalidateQueries({ queryKey: keys.reviews.byBook(externalId) })
+    queryClient.invalidateQueries({ queryKey: keys.logs.diary() })
+    queryClient.invalidateQueries({ queryKey: keys.recommendations, refetchType: 'all' })
   }
 
-  function handleQuickLog(status) {
-    submitLog({ status })
+  /* ── Log submit ── */
+  async function submitLog(payload) {
+    if (!isAuthenticated) { navigate('/login'); return }
+    setLogPending(true); setLogError('')
+    try {
+      await logsApi.logBook(externalId, payload)
+      invalidateAll()
+      setShowLog(false)
+      setToast('Saved to your diary!')
+    } catch (err) {
+      setLogError(err?.response?.data?.message || 'Failed to save. Try again.')
+    } finally { setLogPending(false) }
   }
+
+  function handleQuickLog(status) { submitLog({ status }) }
 
   function handleFullLog() {
     submitLog({
       status: STATUS_MAP[logStatus] || 'READ',
-      rating: logRating || undefined,
+      ...(logRating && { rating: logRating }),
       reread,
       ...(startedAt && { startedAt }),
       ...(finishedAt && { finishedAt }),
     })
   }
 
+  /* ── Review submit ── */
+  async function submitReview() {
+    if (!isAuthenticated) { navigate('/login'); return }
+    if (!reviewContent.trim()) { setReviewError('Please write something before submitting.'); return }
+    setReviewPending(true); setReviewError('')
+    try {
+      if (editingReview) {
+        await reviewsApi.update(editingReview.id, reviewContent.trim(), hasSpoiler)
+        setToast('Review updated!')
+      } else {
+        await reviewsApi.create(externalId, reviewContent.trim(), hasSpoiler)
+        setToast('Review published!')
+      }
+      queryClient.invalidateQueries({ queryKey: keys.reviews.byBook(externalId) })
+      queryClient.invalidateQueries({ queryKey: keys.reviews.byUser(user?.id) })
+      setShowWriteReview(false)
+      setEditingReview(null)
+      setReviewContent('')
+      setHasSpoiler(false)
+    } catch (err) {
+      setReviewError(err?.response?.data?.message || 'Failed to submit review.')
+    } finally { setReviewPending(false) }
+  }
+
+  async function deleteReview(reviewId) {
+    try {
+      await reviewsApi.delete(reviewId)
+      queryClient.invalidateQueries({ queryKey: keys.reviews.byBook(externalId) })
+      queryClient.invalidateQueries({ queryKey: keys.reviews.byUser(user?.id) })
+      setToast('Review deleted.')
+    } catch (_) { }
+  }
+
+  function openEdit(review) {
+    setEditingReview({ id: review.id, content: review.content, hasSpoiler: review.hasSpoiler })
+    setReviewContent(review.content || '')
+    setHasSpoiler(review.hasSpoiler || false)
+    setShowWriteReview(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openWriteNew() {
+    if (!isAuthenticated) { navigate('/login'); return }
+    setEditingReview(null)
+    setReviewContent('')
+    setHasSpoiler(false)
+    setShowWriteReview(true)
+  }
+
+  /* ── Render ── */
   return (
     <div className={styles.wrap}>
 
-      {/* ── Hero ── */}
+      {/* ── HERO ── */}
       <div className={styles.hero}>
-        {showCover && (
-          <div className={styles.heroBg} style={{ backgroundImage: `url(${coverUrl})` }} />
-        )}
+        {showCover && <div className={styles.heroBg} style={{ backgroundImage: `url(${coverUrl})` }} />}
         <div className={styles.heroGradient} />
-
         <div className={styles.heroInner}>
+
           {/* Cover */}
           <div className={styles.coverWrap}>
             {showCover ? (
-              <img
-                src={coverUrl}
-                alt={title}
-                className={styles.coverImg}
-                onError={() => setImgFailed(true)}
-              />
+              <img src={coverUrl} alt={title} className={styles.coverImg} onError={() => setImgFailed(true)} />
             ) : (
               <div className={`${styles.coverFallback} bc${ci}`}>
                 <span className={styles.coverInitial}>{title.charAt(0)}</span>
@@ -245,15 +247,10 @@ export default function BookDetailPage() {
             {primaryAuthor && (
               <div className={styles.authorLine}>
                 <span className={styles.authorBy}>by</span>
-                <Link
-                  to={`/search?q=${encodeURIComponent(primaryAuthor)}`}
-                  className={styles.authorName}
-                >
+                <Link to={`/search?q=${encodeURIComponent(primaryAuthor)}`} className={styles.authorName}>
                   {primaryAuthor}
                 </Link>
-                {authors.length > 1 && (
-                  <span className={styles.moreAuthors}>+{authors.length - 1} more</span>
-                )}
+                {authors.length > 1 && <span className={styles.moreAuthors}>+{authors.length - 1} more</span>}
               </div>
             )}
 
@@ -264,10 +261,8 @@ export default function BookDetailPage() {
                   <span className={styles.ratingScore}>{avgRating.toFixed(1)}</span>
                   <div className={styles.ratingDetail}>
                     <div className={styles.ratingStars}>
-                      {safeRepeat('★', Math.round(avgRating))}
-                      <span className={styles.emptyStars}>
-                        {safeRepeat('★', 5 - Math.round(avgRating))}
-                      </span>
+                      {safeRpt('★', Math.round(avgRating))}
+                      <span className={styles.emptyStars}>{safeRpt('★', 5 - Math.round(avgRating))}</span>
                     </div>
                     <div className={styles.ratingCount}>
                       {ratingsCount.toLocaleString()} ratings
@@ -297,43 +292,36 @@ export default function BookDetailPage() {
               </div>
             )}
 
-            {/* User log status */}
+            {/* User status badge */}
             {userStatus && (
               <div className={styles.userLogBadge}>
                 <StatusPill status={userStatus} />
                 {userRating > 0 && (
-                  <span className={styles.userRatingInline}>
-                    Your rating: {safeRepeat('★', Math.round(userRating))}
-                  </span>
+                  <span className={styles.userRatingInline}>{safeRpt('★', Math.round(userRating))}</span>
                 )}
               </div>
             )}
 
-            {/* Actions */}
+            {/* ── Hero actions: Log button + quick actions ── */}
             <div className={styles.heroActions}>
+              {/* Primary: opens the log/re-log panel */}
               <button
                 className={styles.btnPrimary}
                 onClick={() => {
                   if (!isAuthenticated) { navigate('/login'); return }
-                  setShowLogPanel(p => !p)
+                  setShowLog(p => !p)
                 }}
               >
-                {showLogPanel ? 'Close' : userStatus ? 'Update log' : 'Log this book'}
+                {showLog ? 'Close' : userStatus ? 'Re-log this book' : 'Log this book'}
               </button>
+
+              {/* Quick-add buttons only if not yet logged */}
               {!userStatus && (
                 <>
-                  <button
-                    className={styles.btnGhost}
-                    onClick={() => handleQuickLog('WANT')}
-                    disabled={logPending}
-                  >
+                  <button className={styles.btnGhost} onClick={() => handleQuickLog('WANT')} disabled={logPending}>
                     Want to read
                   </button>
-                  <button
-                    className={styles.btnGhost}
-                    onClick={() => handleQuickLog('READING')}
-                    disabled={logPending}
-                  >
+                  <button className={styles.btnGhost} onClick={() => handleQuickLog('READING')} disabled={logPending}>
                     Reading now
                   </button>
                 </>
@@ -343,87 +331,81 @@ export default function BookDetailPage() {
         </div>
       </div>
 
-      {/* ── Log Panel ── */}
-      {showLogPanel && (
+      {/* ── LOG PANEL ── */}
+      {showLog && (
         <div className={styles.logPanel}>
           <h3 className={styles.logPanelTitle}>
-            {userStatus ? `Update "${title}"` : `Log "${title}"`}
+            {userStatus ? `Re-log "${title}"` : `Log "${title}"`}
           </h3>
-
           <div className={styles.statusTabs}>
             {STATUS_TABS.map(s => (
-              <button
-                key={s}
-                className={`${styles.statusTab} ${logStatus === s ? styles.statusTabActive : ''}`}
-                onClick={() => setLogStatus(s)}
-              >
-                {s}
-              </button>
+              <button key={s} className={`${styles.statusTab} ${logStatus === s ? styles.statusTabActive : ''}`} onClick={() => setLogStatus(s)}>{s}</button>
             ))}
           </div>
-
           <div className={styles.logField}>
             <label className={styles.logLabel}>Your rating</label>
             <StarRating initialRating={logRating} onChange={setLogRating} size="lg" />
           </div>
-
-          <div className={styles.logField}>
-            <label className={styles.logLabel}>
-              Review <span className={styles.logOptional}>(optional)</span>
-            </label>
-            <textarea
-              className={styles.logTextarea}
-              placeholder="Share your thoughts on this book…"
-              rows={4}
-              value={logReview}
-              onChange={e => setLogReview(e.target.value)}
-            />
-          </div>
-
           <div className={styles.logDates}>
             <div className={styles.logField}>
               <label className={styles.logLabel}>Date started</label>
-              <input
-                className={styles.logInput}
-                type="date"
-                value={startedAt}
-                onChange={e => setStartedAt(e.target.value)}
-              />
+              <input className={styles.logInput} type="date" value={startedAt} onChange={e => setStartedAt(e.target.value)} />
             </div>
             <div className={styles.logField}>
               <label className={styles.logLabel}>Date finished</label>
-              <input
-                className={styles.logInput}
-                type="date"
-                value={finishedAt}
-                onChange={e => setFinishedAt(e.target.value)}
-              />
+              <input className={styles.logInput} type="date" value={finishedAt} onChange={e => setFinishedAt(e.target.value)} />
             </div>
           </div>
-
           <label className={styles.logCheck}>
             <input type="checkbox" checked={reread} onChange={e => setReread(e.target.checked)} />
             This is a re-read
           </label>
-
           {logError && <p className={styles.logError}>{logError}</p>}
-
           <div className={styles.logActions}>
-            <button className={styles.btnGhost} onClick={() => setShowLogPanel(false)}>
-              Cancel
-            </button>
-            <button
-              className={styles.btnPrimary}
-              onClick={handleFullLog}
-              disabled={logPending}
-            >
+            <button className={styles.btnGhost} onClick={() => setShowLog(false)}>Cancel</button>
+            <button className={styles.btnPrimary} onClick={handleFullLog} disabled={logPending}>
               {logPending ? 'Saving…' : 'Save to diary'}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Body ── */}
+      {/* ── WRITE / EDIT REVIEW PANEL ── */}
+      {showWriteReview && (
+        <div className={styles.logPanel}>
+          <h3 className={styles.logPanelTitle}>
+            {editingReview ? 'Edit your review' : `Review "${title}"`}
+          </h3>
+          <div className={styles.logField}>
+            <label className={styles.logLabel}>
+              Your review
+              {editingReview && <span className={styles.logOptional}> — editing</span>}
+            </label>
+            <textarea
+              className={styles.logTextarea}
+              placeholder="Share your thoughts on this book…"
+              rows={5}
+              value={reviewContent}
+              onChange={e => setReviewContent(e.target.value)}
+            />
+          </div>
+          <label className={styles.logCheck}>
+            <input type="checkbox" checked={hasSpoiler} onChange={e => setHasSpoiler(e.target.checked)} />
+            Contains spoilers
+          </label>
+          {reviewError && <p className={styles.logError}>{reviewError}</p>}
+          <div className={styles.logActions}>
+            <button className={styles.btnGhost} onClick={() => { setShowWriteReview(false); setEditingReview(null) }}>
+              Cancel
+            </button>
+            <button className={styles.btnPrimary} onClick={submitReview} disabled={reviewPending}>
+              {reviewPending ? 'Submitting…' : editingReview ? 'Save changes' : 'Publish review'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── BODY ── */}
       <div className={styles.body}>
         <div className={styles.mainCol}>
 
@@ -449,52 +431,64 @@ export default function BookDetailPage() {
               <div className={styles.detailItem}>
                 <dt className={styles.detailLabel}>Source</dt>
                 <dd className={styles.detailValue}>
-                  <a
-                    href={`https://openlibrary.org/works/${externalId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.detailLink}
-                  >
-                    Open Library
-                  </a>
+                  <a href={`https://openlibrary.org/works/${externalId}`} target="_blank" rel="noopener noreferrer" className={styles.detailLink}>Open Library</a>
                 </dd>
               </div>
             </dl>
           </section>
 
-          {/* Reviews */}
+          {/* Reviews section */}
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>
-              Reviews
-              {rawReviews.length > 0 && (
-                <span className={styles.sectionCount}>{rawReviews.length}</span>
-              )}
-            </h2>
-            {rawReviews.length > 0 ? (
-              <div className={styles.reviewsList}>
-                {rawReviews.map((r, i) => <InlineReviewCard key={r?.id ?? i} review={r} />)}
-              </div>
-            ) : (
-              <div className={styles.emptyCard}>
-                <p>No reviews yet.</p>
-                <button
-                  className={styles.btnGhost}
-                  onClick={() => {
-                    if (!isAuthenticated) { navigate('/login'); return }
-                    setShowLogPanel(true)
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                >
-                  Write the first review
+            <div className={styles.reviewsHeader}>
+              <h2 className={styles.sectionTitle}>
+                Reviews
+                {reviewsCount > 0 && <span className={styles.sectionCount}>{reviewsCount}</span>}
+              </h2>
+              {/* Write review button — only if authenticated and hasn't reviewed yet */}
+              {isAuthenticated && !myReview && !showWriteReview && (
+                <button className={styles.btnGhost} onClick={openWriteNew}>
+                  Write a review
                 </button>
+              )}
+            </div>
+
+            {/* My review first */}
+            {myReview && (
+              <div className={styles.myReviewWrap}>
+                <div className={styles.myReviewLabel}>Your review</div>
+                <ReviewCard
+                  review={myReview}
+                  isOwn
+                  onEdit={() => openEdit(myReview)}
+                  onDelete={() => deleteReview(myReview.id)}
+                />
               </div>
             )}
+
+            {/* Other reviews */}
+            {otherReviews.length > 0 ? (
+              <div className={styles.reviewsList}>
+                {otherReviews.map((r, i) => <ReviewCard key={r?.id ?? i} review={r} />)}
+              </div>
+            ) : !myReview ? (
+              <div className={styles.emptyCard}>
+                <p>No reviews yet.</p>
+                {isAuthenticated ? (
+                  <button className={styles.btnGhost} onClick={openWriteNew}>
+                    Write the first review
+                  </button>
+                ) : (
+                  <button className={styles.btnGhost} onClick={() => navigate('/login')}>
+                    Sign in to review
+                  </button>
+                )}
+              </div>
+            ) : null}
           </section>
         </div>
 
         {/* Sidebar */}
         <aside className={styles.sidebar}>
-
           {hasRatingBars && (
             <div className={styles.widget}>
               <h3 className={styles.widgetTitle}>Rating breakdown</h3>
@@ -502,16 +496,13 @@ export default function BookDetailPage() {
                 {ratingBars.map(bar => (
                   <div key={bar.stars} className={styles.barRow}>
                     <span className={styles.barLabel}>{bar.stars}★</span>
-                    <div className={styles.barTrack}>
-                      <div className={styles.barFill} style={{ width: `${bar.percent}%` }} />
-                    </div>
+                    <div className={styles.barTrack}><div className={styles.barFill} style={{ width: `${bar.percent}%` }} /></div>
                     <span className={styles.barNum}>{bar.count}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
           <div className={styles.widget}>
             <h3 className={styles.widgetTitle}>Community</h3>
             <div className={styles.statsList}>
@@ -520,17 +511,12 @@ export default function BookDetailPage() {
               <StatRow label="Ratings" value={ratingsCount} />
             </div>
           </div>
-
           {authors.length > 0 && (
             <div className={styles.widget}>
               <h3 className={styles.widgetTitle}>{authors.length > 1 ? 'Authors' : 'Author'}</h3>
               <div className={styles.authorsCol}>
                 {authors.map((a, i) => (
-                  <Link
-                    key={i}
-                    to={`/search?q=${encodeURIComponent(a)}`}
-                    className={styles.authorItem}
-                  >
+                  <Link key={i} to={`/search?q=${encodeURIComponent(a)}`} className={styles.authorItem}>
                     <div className={styles.authorBubble}>{a.charAt(0).toUpperCase()}</div>
                     <span className={styles.authorItemName}>{a}</span>
                   </Link>
@@ -541,21 +527,24 @@ export default function BookDetailPage() {
         </aside>
       </div>
 
-      <Toast message="Saved to your diary!" visible={toast} onHide={() => setToast(false)} />
+      <Toast message={toast} visible={!!toast} onHide={() => setToast('')} />
     </div>
   )
 }
 
-/* ── Inline sub-components ────────────────────────────────────────────────── */
-
-function InlineReviewCard({ review }) {
+/* ── Sub-components ── */
+function ReviewCard({ review, isOwn = false, onEdit, onDelete }) {
+  const navigate = useNavigate()
   if (!review) return null
   const username = safeStr(review.username || review.user?.username) || 'Anonymous'
   const initial = username.charAt(0).toUpperCase() || '?'
-  const date = formatDate(review.createdAt)
+  const date = fmtDate(review.createdAt)
   const rating = safeNum(review.rating)
   const content = safeStr(review.content)
   const likes = safeNum(review.likesCount)
+  const coverUrl = safeStr(review.bookCoverUrl)
+  const [imgFailed, setImgFailed] = useState(false)
+  const ci = colorIdx(safeStr(review.bookExternalId))
 
   return (
     <div className={styles.reviewCard}>
@@ -565,14 +554,16 @@ function InlineReviewCard({ review }) {
           <div className={styles.reviewUser}>{username}</div>
           {date && <div className={styles.reviewDate}>{date}</div>}
         </div>
-        {rating > 0 && (
-          <div className={styles.reviewStars}>{safeRepeat('★', Math.round(rating))}</div>
+        {rating > 0 && <div className={styles.reviewStars}>{safeRpt('★', Math.round(rating))}</div>}
+        {isOwn && (onEdit || onDelete) && (
+          <div className={styles.reviewOwnerActions}>
+            {onEdit && <button className={styles.reviewActionBtn} onClick={onEdit}>Edit</button>}
+            {onDelete && <button className={`${styles.reviewActionBtn} ${styles.reviewActionDanger}`} onClick={onDelete}>Delete</button>}
+          </div>
         )}
       </div>
       {content && <p className={styles.reviewBody}>{content}</p>}
-      {likes > 0 && (
-        <div className={styles.reviewLikes}>{likes} {likes === 1 ? 'like' : 'likes'}</div>
-      )}
+      {likes > 0 && <div className={styles.reviewLikes}>{likes} {likes === 1 ? 'like' : 'likes'}</div>}
     </div>
   )
 }
@@ -587,10 +578,9 @@ function DetailItem({ label, value }) {
 }
 
 function StatRow({ label, value }) {
-  const n = safeNum(value)
   return (
     <div className={styles.statRow}>
-      <div className={styles.statValue}>{n.toLocaleString()}</div>
+      <div className={styles.statValue}>{safeNum(value).toLocaleString()}</div>
       <div className={styles.statLabel}>{label}</div>
     </div>
   )
@@ -601,18 +591,11 @@ function BookDetailSkeleton() {
     <div className={styles.wrap}>
       <div className={styles.hero}>
         <div className={styles.heroInner}>
-          <div className={styles.coverWrap}>
-            <div className={styles.coverSkel} />
-          </div>
+          <div className={styles.coverWrap}><div className={styles.coverSkel} /></div>
           <div className={styles.info}>
-            <div className={styles.skelTitle} />
-            <div className={styles.skelAuthor} />
-            <div className={styles.skelMeta} />
-            <div className={styles.skelRating} />
-            <div className={styles.skelActions}>
-              <div className={styles.skelBtn} />
-              <div className={styles.skelBtn} />
-            </div>
+            <div className={styles.skelTitle} /><div className={styles.skelAuthor} />
+            <div className={styles.skelMeta} /><div className={styles.skelRating} />
+            <div className={styles.skelActions}><div className={styles.skelBtn} /><div className={styles.skelBtn} /></div>
           </div>
         </div>
       </div>

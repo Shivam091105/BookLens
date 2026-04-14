@@ -83,5 +83,5 @@ public interface BookLogRepository extends JpaRepository<BookLog, Long> {
         FROM BookLog bl
         WHERE bl.externalBookId = :externalBookId
         """)
-    Object[] getBookStats(@Param("externalBookId") String externalBookId);
+    List<Object[]> getBookStats(@Param("externalBookId") String externalBookId);
 }

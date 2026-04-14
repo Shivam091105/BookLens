@@ -12,6 +12,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -127,9 +128,10 @@ public class BookApiService {
         if (dto.getExternalId() == null) return;
 
         try {
-            Object[] stats = bookLogRepository.getBookStats(dto.getExternalId());
-            if (stats != null && stats[0] != null) {
-                dto.setLogsCount(((Number) stats[0]).intValue());
+            List<Object[]> statsList = bookLogRepository.getBookStats(dto.getExternalId());
+            if (statsList != null && !statsList.isEmpty() && statsList.get(0) != null) {
+                Object[] stats = statsList.get(0);
+                dto.setLogsCount(stats[0] != null ? ((Number) stats[0]).intValue() : 0);
                 dto.setAverageRating(stats[1] != null ? ((Number) stats[1]).doubleValue() : 0.0);
                 dto.setRatingsCount(stats[2] != null ? ((Number) stats[2]).intValue() : 0);
             } else {
