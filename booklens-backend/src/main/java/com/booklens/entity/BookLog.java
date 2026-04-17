@@ -86,6 +86,9 @@ public class BookLog {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    public void warn(String s, Long userId, String message) {
+    }
+
     public enum ReadingStatus {
         WANT,
         READING,

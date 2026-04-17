@@ -85,8 +85,8 @@
 // }
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { booksApi } from '../api/books'
-import { logsApi }  from '../api/logs'
-import { keys }     from '../api/queryKeys'
+import { logsApi } from '../api/logs'
+import { keys } from '../api/queryKeys'
 
 // ── Popular books — fetch from Open Library using curated search terms ────────
 const POPULAR_QUERIES = ['best novels 2024', 'award winning fiction', 'modern classics']
@@ -107,8 +107,8 @@ export function usePopularBooks(limit = 8) {
 export function useBookSearch(query, { enabled = true } = {}) {
   return useQuery({
     queryKey: keys.books.search(query),
-    queryFn:  () => booksApi.search(query),
-    enabled:  enabled && !!query && query.trim().length >= 2,
+    queryFn: () => booksApi.search(query),
+    enabled: enabled && !!query && query.trim().length >= 2,
     staleTime: 10 * 60 * 1000,
     placeholderData: { books: [], totalResults: 0, hasMore: false, query: '' },
   })
@@ -118,8 +118,8 @@ export function useBookSearch(query, { enabled = true } = {}) {
 export function useBook(externalId) {
   return useQuery({
     queryKey: keys.books.detail(externalId),
-    queryFn:  () => booksApi.getById(externalId),
-    enabled:  !!externalId,
+    queryFn: () => booksApi.getById(externalId),
+    enabled: !!externalId,
     staleTime: 30 * 60 * 1000,
   })
 }
@@ -128,8 +128,8 @@ export function useBook(externalId) {
 export function useRatingDistribution(externalId) {
   return useQuery({
     queryKey: keys.books.ratingDist(externalId),
-    queryFn:  () => booksApi.getRatingDistribution(externalId),
-    enabled:  !!externalId,
+    queryFn: () => booksApi.getRatingDistribution(externalId),
+    enabled: !!externalId,
   })
 }
 
@@ -170,8 +170,8 @@ export function useDeleteLog() {
 export function useBrowseBySubject(subject, limit = 12) {
   return useQuery({
     queryKey: ['books', 'subject', subject],
-    queryFn:  () => booksApi.browseBySubject(subject, limit),
-    enabled:  !!subject,
+    queryFn: () => booksApi.browseBySubject(subject, limit),
+    enabled: !!subject,
     staleTime: 10 * 60 * 1000,
   })
 }

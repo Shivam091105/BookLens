@@ -52,7 +52,16 @@ export default function Navbar() {
             </NavLink>
           </li>
         )}
-        <li><a href="#">Members</a></li>
+        <li>
+          <NavLink to="/members" className={({ isActive }) => isActive ? styles.active : ''}>
+            Members
+          </NavLink>
+        </li>
+        <li>
+          <NavLink to="/lists" className={({ isActive }) => isActive ? styles.active : ''}>
+            Lists
+          </NavLink>
+        </li>
       </ul>
 
       {/* Right section */}

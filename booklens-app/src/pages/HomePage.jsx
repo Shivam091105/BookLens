@@ -122,7 +122,7 @@ export default function HomePage() {
         <div className={styles.section} style={{ paddingTop: 0 }}>
           <SectionHeader title="Recommended for you" linkLabel="See all →" />
           <div className={styles.booksGrid}>
-            {recommendations.slice(0, 8).map((rec, i) => (
+            {recommendations.slice(0, 24).map((rec, i) => (
               <BookCard
                 key={rec.externalId ?? rec.id ?? i}
                 book={{
@@ -201,7 +201,10 @@ function normaliseLog(log) {
     action: (
       <>
         <strong>{log.user?.username}</strong> logged{' '}
-        <a href="#">{log.book?.title}</a>
+        {log.book?.externalId
+          ? <a href={`/book/${log.book.externalId}`}>{log.book?.title}</a>
+          : <span>{log.book?.title}</span>
+        }
       </>
     ),
     bookMini: log.book ? {

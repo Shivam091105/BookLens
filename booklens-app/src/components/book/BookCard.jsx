@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import StarRating from '../ui/StarRating'
+import useAuthStore from '../../store/authStore'
 import styles from './BookCard.module.css'
 
 /**
@@ -17,28 +18,33 @@ import styles from './BookCard.module.css'
  */
 export default function BookCard({ book, badge }) {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuthStore()
 
   const {
     externalId,
-    title         = '',
-    author        = '',
+    title = '',
+    author = '',
     coverUrl,
     coverUrlSmall,
-    coverColor    = 'bc1',
+    coverColor = 'bc1',
     averageRating = 0,
-    ratingsCount  = 0,
+    ratingsCount = 0,
   } = book
 
-  const stars       = averageRating > 0 ? '★'.repeat(Math.round(averageRating)) : ''
-  const countLabel  = ratingsCount >= 1000
+  const stars = averageRating > 0 ? '★'.repeat(Math.round(averageRating)) : ''
+  const countLabel = ratingsCount >= 1000
     ? `${(ratingsCount / 1000).toFixed(0)}k`
     : String(ratingsCount)
   const displayCover = coverUrlSmall || coverUrl
 
   function handleClick() {
-    if (externalId) {
-      navigate(`/book/${externalId}`)
-    }
+    if (externalId) navigate(`/book/${externalId}`)
+  }
+
+  function handleRate(e, rating) {
+    e.stopPropagation()
+    if (!isAuthenticated) { navigate('/login'); return }
+    if (externalId) navigate(`/book/${externalId}`)
   }
 
   return (
@@ -51,7 +57,6 @@ export default function BookCard({ book, badge }) {
             className={styles.coverImg}
             loading="lazy"
             onError={e => {
-              // Fall back to colour swatch if image fails
               e.target.style.display = 'none'
               e.target.parentElement.classList.add(coverColor)
             }}
@@ -59,8 +64,13 @@ export default function BookCard({ book, badge }) {
         ) : (
           <div className={styles.placeholder}>{title}</div>
         )}
-        <div className={styles.overlay}>
-          <StarRating initialRating={0} size="sm" readOnly={false} />
+        <div className={styles.overlay} onClick={e => e.stopPropagation()}>
+          <StarRating
+            initialRating={0}
+            size="sm"
+            readOnly={false}
+            onChange={(rating) => handleRate({ stopPropagation: () => { } }, rating)}
+          />
         </div>
       </div>
 

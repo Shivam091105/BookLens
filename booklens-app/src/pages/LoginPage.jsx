@@ -213,8 +213,8 @@ export default function LoginPage() {
               </p>
               <p className={styles.terms}>
                 By creating an account you agree to our{' '}
-                <a href="#" className={styles.termsLink}>Terms</a> and{' '}
-                <a href="#" className={styles.termsLink}>Privacy Policy</a>.
+                <Link to="/" className={styles.termsLink}>Terms</Link> and{' '}
+                <Link to="/" className={styles.termsLink}>Privacy Policy</Link>.
               </p>
             </>
           )}

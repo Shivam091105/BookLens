@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import styles from './Footer.module.css'
 
 export default function Footer() {
+  const year = new Date().getFullYear()
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
@@ -19,38 +20,38 @@ export default function Footer() {
         <div>
           <div className={styles.colTitle}>Explore</div>
           <ul className={styles.links}>
-            <li><a href="#">Popular books</a></li>
-            <li><a href="#">New releases</a></li>
-            <li><a href="#">Top lists</a></li>
-            <li><a href="#">Genres</a></li>
-            <li><a href="#">Awards</a></li>
+            <li><Link to="/browse">Popular books</Link></li>
+            <li><Link to="/browse">New releases</Link></li>
+            <li><Link to="/lists">Top lists</Link></li>
+            <li><Link to="/browse">Genres</Link></li>
+            <li><Link to="/browse">Awards</Link></li>
           </ul>
         </div>
 
         <div>
           <div className={styles.colTitle}>Community</div>
           <ul className={styles.links}>
-            <li><a href="#">Members</a></li>
-            <li><a href="#">Reviews</a></li>
-            <li><a href="#">Reading groups</a></li>
-            <li><a href="#">Journal</a></li>
+            <li><Link to="/members">Members</Link></li>
+            <li><Link to="/browse">Reviews</Link></li>
+            <li><Link to="/members">Reading groups</Link></li>
+            <li><Link to="/log">Journal</Link></li>
           </ul>
         </div>
 
         <div>
           <div className={styles.colTitle}>Company</div>
           <ul className={styles.links}>
-            <li><a href="#">About</a></li>
-            <li><a href="#">API</a></li>
-            <li><a href="#">Privacy</a></li>
-            <li><a href="#">Terms</a></li>
-            <li><a href="#">Contact</a></li>
+            <li><Link to="/">About</Link></li>
+            <li><a href="https://docs.anthropic.com" target="_blank" rel="noopener noreferrer">API</a></li>
+            <li><Link to="/">Privacy</Link></li>
+            <li><Link to="/">Terms</Link></li>
+            <li><Link to="/">Contact</Link></li>
           </ul>
         </div>
       </div>
 
       <div className={styles.bottom}>
-        <span>© 2025 BookLens. All rights reserved.</span>
+        <span>© {year} BookLens. All rights reserved.</span>
         <span className={styles.version}>v1.0.0-beta</span>
       </div>
     </footer>

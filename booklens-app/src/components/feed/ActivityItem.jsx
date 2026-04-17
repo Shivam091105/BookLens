@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import styles from './ActivityItem.module.css'
 
 /**
@@ -10,11 +11,17 @@ import styles from './ActivityItem.module.css'
  */
 export default function ActivityItem({ item }) {
   const { userInitial, userColor, username, action, bookMini, quote, coverList, time, likes = 0, comments = 0 } = item
+  const navigate = useNavigate()
 
   return (
     <div className={styles.item}>
-      {/* Avatar */}
-      <div className={styles.avatar} style={{ background: userColor }}>
+      {/* Avatar — clickable to members */}
+      <div
+        className={styles.avatar}
+        style={{ background: userColor, cursor: 'pointer' }}
+        onClick={() => navigate('/members')}
+        title={username ? `View ${username}'s profile` : undefined}
+      >
         {userInitial}
       </div>
 
