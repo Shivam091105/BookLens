@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge } from '../ui/Badge'
-import { reviewsApi } from '../../api/reviews'
-import useAuthStore from '../../store/authStore'
 import styles from './ReviewCard.module.css'
 
 /**
@@ -18,7 +16,6 @@ import styles from './ReviewCard.module.css'
  */
 export default function ReviewCard({ review, onEdit, onDelete, isOwn = false }) {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuthStore()
 
   // Resolve fields — handle both API and normalised shapes
   const bookTitle = review.bookTitle || review.book?.title || ''
@@ -40,29 +37,12 @@ export default function ReviewCard({ review, onEdit, onDelete, isOwn = false }) 
   const [imgFailed, setImgFailed] = useState(false)
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(initLikes)
-  const [liking, setLiking] = useState(false)
 
   const stars = rating > 0 ? '★'.repeat(Math.min(5, Math.max(1, Math.round(rating)))) : ''
 
-  async function toggleLike() {
-    if (liking) return
-    // Optimistic update
-    const wasLiked = liked
-    setLiked(!wasLiked)
-    setLikeCount(c => wasLiked ? c - 1 : c + 1)
-    // Only call API if review has a real numeric id and user is authenticated
-    if (review.id && typeof review.id === 'number' && isAuthenticated) {
-      setLiking(true)
-      try {
-        await reviewsApi.toggleLike(review.id)
-      } catch {
-        // Revert on failure
-        setLiked(wasLiked)
-        setLikeCount(c => wasLiked ? c + 1 : c - 1)
-      } finally {
-        setLiking(false)
-      }
-    }
+  function toggleLike() {
+    setLiked(p => !p)
+    setLikeCount(p => liked ? p - 1 : p + 1)
   }
 
   function handleCardClick() {
@@ -116,8 +96,6 @@ export default function ReviewCard({ review, onEdit, onDelete, isOwn = false }) 
           className={`${styles.likes} ${liked ? styles.liked : ''}`}
           onClick={toggleLike}
           type="button"
-          disabled={liking}
-          title={!isAuthenticated ? 'Sign in to like reviews' : undefined}
         >
           ♥ {likeCount} {likeCount === 1 ? 'like' : 'likes'}
         </button>

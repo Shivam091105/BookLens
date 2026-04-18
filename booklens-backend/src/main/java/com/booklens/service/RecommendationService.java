@@ -19,20 +19,20 @@ import java.util.stream.Collectors;
  * Manages a persistent, ordered recommendation pool per user.
  *
  * Pool behaviour (Netflix-style):
- *   - Pool holds at most POOL_MAX (15) items.
- *   - On every new signal (log / rating), fresh candidates are computed
- *     from the NEW seed (the book just logged/rated) only.
- *   - Those fresh items are injected at position 0..N-1 (front of list).
- *   - Existing items are shifted down by N positions.
- *   - Anything that falls beyond POOL_MAX is dropped.
- *   - If a fresh candidate is already in the pool, it is moved to the front
- *     (position updated) rather than duplicated.
+ * - Pool holds at most POOL_MAX (15) items.
+ * - On every new signal (log / rating), fresh candidates are computed
+ * from the NEW seed (the book just logged/rated) only.
+ * - Those fresh items are injected at position 0..N-1 (front of list).
+ * - Existing items are shifted down by N positions.
+ * - Anything that falls beyond POOL_MAX is dropped.
+ * - If a fresh candidate is already in the pool, it is moved to the front
+ * (position updated) rather than duplicated.
  *
  * On first call (empty pool), seeds all highly-rated books to fill the pool.
  *
  * Reading the pool:
- *   - Returns items ordered by position (0 = freshest).
- *   - Does NOT recompute on read — reads are pure DB lookups.
+ * - Returns items ordered by position (0 = freshest).
+ * - Does NOT recompute on read — reads are pure DB lookups.
  */
 @Service
 @RequiredArgsConstructor
@@ -40,8 +40,8 @@ import java.util.stream.Collectors;
 public class RecommendationService {
 
     private final UserRecommendationRepository recRepo;
-    private final BookLogRepository            bookLogRepo;
-    private final BookApiService               bookApiService;
+    private final BookLogRepository bookLogRepo;
+    private final BookApiService bookApiService;
 
     // ── Public API ────────────────────────────────────────────────────────
 
@@ -56,8 +56,10 @@ public class RecommendationService {
         // Bootstrap: pool is empty but user has signals — seed from all rated books
         if (pool.isEmpty()) {
             List<String> seeds = bookLogRepo.findHighlyRatedExternalBookIdsByUserId(userId);
-            if (seeds.isEmpty()) seeds = bookLogRepo.findAnyRatedExternalBookIdsByUserId(userId);
-            if (seeds.isEmpty()) return List.of();
+            if (seeds.isEmpty())
+                seeds = bookLogRepo.findAnyRatedExternalBookIdsByUserId(userId);
+            if (seeds.isEmpty())
+                return List.of();
 
             // Seed pool from up to 3 highly-rated books
             for (String seedId : seeds.stream().limit(3).collect(Collectors.toList())) {
@@ -74,13 +76,14 @@ public class RecommendationService {
      * Injects fresh recommendations derived from that specific book,
      * pushing existing entries down. Old ones stay but move toward the back.
      *
-     * @param userId         the user who acted
-     * @param triggerBookId  the book that was just logged / rated
+     * @param userId        the user who acted
+     * @param triggerBookId the book that was just logged / rated
      */
     @Transactional
     public void onNewSignal(Long userId, String triggerBookId) {
         List<String> allLogged = bookLogRepo.findExternalBookIdsByUserId(userId);
-        if (allLogged.isEmpty()) return;
+        if (allLogged.isEmpty())
+            return;
 
         try {
             injectCandidatesFromSeed(userId, triggerBookId, 3);
@@ -105,8 +108,8 @@ public class RecommendationService {
      * books, and injects up to `maxNew` of them at the front of the pool.
      */
     private void injectCandidatesFromSeed(Long userId, String seedBookId, int maxNew) {
-        List<String> allLogged  = bookLogRepo.findExternalBookIdsByUserId(userId);
-        Set<String>  inPool     = recRepo.findExternalBookIdsByUserId(userId);
+        List<String> allLogged = bookLogRepo.findExternalBookIdsByUserId(userId);
+        Set<String> inPool = recRepo.findExternalBookIdsByUserId(userId);
 
         BookDto seed;
         try {
@@ -146,12 +149,13 @@ public class RecommendationService {
                 .limit(maxNew)
                 .collect(Collectors.toList());
 
-        if (toInject.isEmpty()) return;
+        if (toInject.isEmpty())
+            return;
 
         int newCount = toInject.size();
 
         // 1. Remove any of these books that are already in the pool
-        //    (they'll be re-inserted at position 0)
+        // (they'll be re-inserted at position 0)
         for (BookDto b : toInject) {
             if (inPool.contains(b.getExternalId())) {
                 recRepo.deleteByUserIdAndBookId(userId, b.getExternalId());
@@ -170,9 +174,9 @@ public class RecommendationService {
                     .externalBookId(b.getExternalId())
                     .position(i)
                     .reason(buildReason(seed, b, reason))
-                    .title(b.getTitle()         != null ? b.getTitle()         : "")
-                    .author(b.getAuthor()        != null ? b.getAuthor()        : "")
-                    .coverUrl(b.getCoverUrl()    != null ? b.getCoverUrl()      : "")
+                    .title(b.getTitle() != null ? b.getTitle() : "")
+                    .author(b.getAuthor() != null ? b.getAuthor() : "")
+                    .coverUrl(b.getCoverUrl() != null ? b.getCoverUrl() : "")
                     .coverUrlSmall(b.getCoverUrlSmall() != null ? b.getCoverUrlSmall() : "")
                     .averageRating(b.getAverageRating())
                     .ratingsCount(b.getRatingsCount())
@@ -207,14 +211,14 @@ public class RecommendationService {
 
     private Map<String, Object> toMap(UserRecommendation r) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("externalId",    r.getExternalBookId());
-        m.put("title",         r.getTitle()         != null ? r.getTitle()         : "");
-        m.put("author",        r.getAuthor()         != null ? r.getAuthor()        : "");
-        m.put("coverUrl",      r.getCoverUrl()       != null ? r.getCoverUrl()      : "");
-        m.put("coverUrlSmall", r.getCoverUrlSmall()  != null ? r.getCoverUrlSmall() : "");
-        m.put("averageRating", r.getAverageRating()  != null ? r.getAverageRating() : 0.0);
-        m.put("ratingsCount",  r.getRatingsCount()   != null ? r.getRatingsCount()  : 0);
-        m.put("reason",        r.getReason()         != null ? r.getReason()        : "");
+        m.put("externalId", r.getExternalBookId());
+        m.put("title", r.getTitle() != null ? r.getTitle() : "");
+        m.put("author", r.getAuthor() != null ? r.getAuthor() : "");
+        m.put("coverUrl", r.getCoverUrl() != null ? r.getCoverUrl() : "");
+        m.put("coverUrlSmall", r.getCoverUrlSmall() != null ? r.getCoverUrlSmall() : "");
+        m.put("averageRating", r.getAverageRating() != null ? r.getAverageRating() : 0.0);
+        m.put("ratingsCount", r.getRatingsCount() != null ? r.getRatingsCount() : 0);
+        m.put("reason", r.getReason() != null ? r.getReason() : "");
         return m;
     }
 }

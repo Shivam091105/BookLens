@@ -191,11 +191,10 @@ export default function ProfilePage() {
               )}
             </div>
             <br></br>
-            <br></br>
+
             {/* Reading challenge */}
             <div className={styles.subHeader}>
-              <h3 className={styles.subTitle}>Reading Challenge</h3>
-              {/* <button className={styles.subLink} onClick={() => setActiveTab('Challenge')}>View challenge</button> */}
+              <h3 className={styles.subTitle}>Reading challenge</h3>
             </div>
             {challenge && (
               <div className={styles.challengeBox}>

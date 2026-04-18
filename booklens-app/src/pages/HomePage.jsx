@@ -109,7 +109,7 @@ export default function HomePage() {
         <SectionHeader title="Popular this week" linkLabel="Browse all →" onLinkClick={() => navigate('/browse')} />
         <div className={styles.booksGrid}>
           {booksLoading
-            ? Array.from({ length: 8 }).map((_, i) => <BookCardSkeleton key={i} />)
+            ? Array.from({ length: 6 }).map((_, i) => <BookCardSkeleton key={i} />)
             : popularBooks.length > 0
               ? popularBooks.map((book, i) => <BookCard key={book.externalId ?? book.id ?? i} book={book} />)
               : <EmptyState message="No books yet. Be the first to log one!" />
