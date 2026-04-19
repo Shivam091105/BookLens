@@ -48,7 +48,7 @@ server:
 
 # ── JWT ─────────────────────────────────────────────────────────────────────
 jwt:
-  secret: booklens-super-secret-key-change-this-in-production-min-256-bits
+  secret: Ojz8YO4EC791CdmCWCi9REDkVc3OI8Uz
   expiration-ms: 86400000           # 24 hours
   refresh-expiration-ms: 604800000  # 7 days
 
