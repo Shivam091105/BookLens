@@ -215,6 +215,7 @@ function normaliseLog(log) {
     },
     time: formatTime(log.updatedAt ?? log.createdAt),
     likes: 0,
+    quote: log.reviewContent ?? null,
   }
 }
 

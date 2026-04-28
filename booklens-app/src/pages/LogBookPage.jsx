@@ -6,6 +6,7 @@ import SectionHeader from '../components/ui/SectionHeader'
 import Toast from '../components/ui/Toast'
 import { useBookSearch, useLogBook, useDeleteLog } from '../hooks/useBooks'
 import { useDiary } from '../hooks/useUser'
+import { useCreateReview } from '../hooks/useReviews'
 import useAuthStore from '../store/authStore'
 import styles from './LogBookPage.module.css'
 
@@ -52,6 +53,7 @@ function LogBookForm() {
   const [reread, setReread] = useState(false)
   const [tags, setTags] = useState('')
   const [toast, setToast] = useState(false)
+  const createReview = useCreateReview()
 
   // ── API hooks ──────────────────────────────────────────────────────────
   // useBookSearch now returns { books: [], totalResults, hasMore, query }
@@ -84,7 +86,13 @@ function LogBookForm() {
         ...(finishedAt && { finishedAt }),
       }
     })
-
+    if (review.trim().length > 0) {
+      await createReview.mutateAsync({
+        bookId: selectedBook.externalId,
+        content: review,
+        hasSpoiler: spoiler,
+      })
+    }
     setToast(true)
     setSelectedBook(null)
     setReview('')

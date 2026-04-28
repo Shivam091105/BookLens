@@ -4,9 +4,9 @@ spring:
 
   # ── PostgreSQL ──────────────────────────────────────────────────────────
   datasource:
-    url: jdbc:postgresql://localhost:5432/booklens
-    username: postgres
-    password: te31204         # change to your local postgres password
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/booklens}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:te31204}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -29,8 +29,8 @@ spring:
   # ── Redis (caching) ─────────────────────────────────────────────────────
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
       timeout: 2000ms
 
   # ── Jackson ─────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ server:
 
 # ── JWT ─────────────────────────────────────────────────────────────────────
 jwt:
-  secret: Ojz8YO4EC791CdmCWCi9REDkVc3OI8Uz
+  secret: ${JWT_SECRET:Ojz8YO4EC791CdmCWCi9REDkVc3OI8Uz}
   expiration-ms: 86400000           # 24 hours
   refresh-expiration-ms: 604800000  # 7 days
 
@@ -60,7 +60,7 @@ open-library:
 
 # ── Google OAuth2 ────────────────────────────────────────────────────────────
 google:
-  client-id: 1082269421859-89k9fofusdm2esu0feqe91kuhss479rg.apps.googleusercontent.com  # from console.cloud.google.com
+  client-id: ${GOOGLE_CLIENT_ID:1082269421859-89k9fofusdm2esu0feqe91kuhss479rg.apps.googleusercontent.com}
 
 # ── Recommendation Engine ────────────────────────────────────────────────────
 recommendation:
@@ -73,11 +73,11 @@ recommendation:
 # ── CORS ─────────────────────────────────────────────────────────────────────
 cors:
   allowed-origins:
-    - http://localhost:5173    # Vite dev server (default)
-    - http://localhost:5174    # Vite dev server (alternate)
-    - http://localhost:5175    # Vite dev server (alternate)
+    - http://localhost:5173
+    - http://localhost:5174
+    - http://localhost:5175
     - http://localhost:3000
-    - https://booklens.vercel.app
+    - ${CORS_ALLOWED_ORIGINS:https://booklens.vercel.app}
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging:

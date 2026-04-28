@@ -11,6 +11,7 @@ import com.booklens.entity.User;
 import com.booklens.exception.BookLensException;
 import com.booklens.repository.BookListRepository;
 import com.booklens.repository.BookLogRepository;
+import com.booklens.repository.ReviewRepository;
 import com.booklens.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ public class BookLogService {
     private final BookApiService         bookApiService;
     private final BookListRepository     bookListRepository;
     private final RecommendationService  recommendationService;
+    private final ReviewRepository       reviewRepository;
 
     // ── Log / update a book entry ─────────────────────────────────────────
 
@@ -206,6 +208,10 @@ public class BookLogService {
                 .displayName(log.getUser().getDisplayName())
                 .createdAt(log.getCreatedAt())
                 .updatedAt(log.getUpdatedAt())
+                .reviewContent(reviewRepository.findByUserIdAndExternalBookId(
+                                log.getUser().getId(), log.getExternalBookId())
+                                .map(r -> r.getContent()).orElse(null)
+                )
                 .build();
     }
 

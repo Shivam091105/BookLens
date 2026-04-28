@@ -36,4 +36,6 @@ public class BookLogDto {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private String reviewContent;
 }
